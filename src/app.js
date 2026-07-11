@@ -1,29 +1,33 @@
-const express = require('express');
-const cors = require('cors');
-const postsRoutes = require('./routes/posts.routes');
-const authRoutes = require('./routes/auth.routes');
-const errorHandler = require('./middleware/errorHandler.middleware');
+const express = require("express");
+const cors = require("cors");
+const postsRoutes = require("./routes/posts.routes");
+const authRoutes = require("./routes/auth.routes");
+const conversationsRoutes = require("./routes/conversations.routes");
+const errorHandler = require("./middleware/errorHandler.middleware");
 
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: "5mb" }));
 app.use((req, res, next) => {
-  const start = Date.now();
+	const start = Date.now();
 
-  res.on('finish', () => {
-    console.log(`[BACKEND] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now() - start}ms)`);
-  });
+	res.on("finish", () => {
+		console.log(
+			`[BACKEND] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now() - start}ms)`,
+		);
+	});
 
-  next();
+	next();
 });
 
-app.get('/health', (_req, res) => {
-  res.json({ success: true, message: 'API funcionando correctamente.' });
+app.get("/health", (_req, res) => {
+	res.json({ success: true, message: "API funcionando correctamente." });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/posts', postsRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/posts", postsRoutes);
+app.use("/api/conversations", conversationsRoutes);
 
 app.use(errorHandler);
 

@@ -1,0 +1,10 @@
+# Environment
+.env
+
+# Dependencies
+node_modules/
+
+# Local Pi runtime state
+.atl/
+.pi/
+.pi-subagents/

@@ -1,0 +1,9 @@
+project: campuslend-backend
+summary: Express backend for CampusLend marketplace APIs.
+artifact_store: openspec
+persistence: json-files
+strict_tdd: false
+test_runner: unavailable
+notes:
+  - npm test is currently a placeholder that exits with failure.
+  - Runtime data is persisted under src/data/*.json to match current repository conventions.
