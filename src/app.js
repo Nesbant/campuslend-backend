@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const postsRoutes = require('./routes/posts.routes');
 const authRoutes = require('./routes/auth.routes');
+const institutionsRoutes = require('./routes/institutions.routes');
 const errorHandler = require('./middleware/errorHandler.middleware');
 
 const app = express();
@@ -24,6 +25,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postsRoutes);
+app.use('/api/institutions', institutionsRoutes);
 
 app.use(errorHandler);
 

@@ -1,14 +1,55 @@
-const postModel = require('../models/post.model');
+const { Post, User, UserFavorite, Sequelize } = require('../../models');
+const { Op } = Sequelize;
 
 async function listPosts(req, res, next) {
   try {
     const { text, category, type } = req.query;
-    const posts = await postModel.listPosts({ text, category, type });
+    const where = {};
+
+    if (text) {
+      where[Op.or] = [
+        { title: { [Op.iLike]: `%${text}%` } },
+        { description: { [Op.iLike]: `%${text}%` } },
+      ];
+    }
+    if (category) where.category = category;
+    if (type) where.status = type === 'request' ? 'requesting' : 'lending';
+
+    // Incluir dinámicamente los datos del autor y si es favorito para el usuario actual
+    const include = [
+      {
+        model: User,
+        as: 'author',
+        attributes: ['id', 'name', 'avatar'],
+      },
+    ];
+
+    // Si hay un usuario logueado, verificamos qué posts son sus favoritos
+    if (req.user) {
+      include.push({
+        model: User,
+        as: 'favoritedBy',
+        where: { id: req.user.id },
+        required: false,
+      });
+    }
+
+    const posts = await Post.findAll({
+      where,
+      include,
+      order: [['createdAt', 'DESC']],
+    });
+
+    await post.increment('views');
 
     res.json({
       success: true,
-      count: posts.length,
-      data: posts,
+      data: posts.map((post) => {
+        const isFavorite = post.favoritedBy && post.favoritedBy.length > 0;
+        // Eliminamos la propiedad para no exponerla en el API
+        delete post.dataValues.favoritedBy;
+        return { ...post.dataValues, isFavorite };
+      }),
     });
   } catch (error) {
     next(error);
@@ -17,13 +58,40 @@ async function listPosts(req, res, next) {
 
 async function getPost(req, res, next) {
   try {
-    const post = await postModel.getPostById(req.params.id);
+    const include = [
+      {
+        model: User,
+        as: 'author',
+        attributes: ['id', 'name', 'avatar'],
+      },
+    ];
 
-    if (!post) {
-      return res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+    if (req.user) {
+      include.push({
+        model: User,
+        as: 'favoritedBy',
+        where: { id: req.user.id },
+        required: false,
+      });
     }
 
-    res.json({ success: true, data: post });
+    const post = await Post.findByPk(req.params.id, {
+      include,
+    });
+
+    await post.increment('views');
+
+    if (!post) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Publicación no encontrada.' });
+    }
+
+    const isFavorite = post.favoritedBy && post.favoritedBy.length > 0;
+    delete post.dataValues.favoritedBy;
+    const postWithFavorite = { ...post.dataValues, isFavorite };
+
+    res.json({ success: true, data: postWithFavorite });
   } catch (error) {
     next(error);
   }
@@ -31,7 +99,10 @@ async function getPost(req, res, next) {
 
 async function listMyPosts(req, res, next) {
   try {
-    const posts = await postModel.getUserPosts(req.user.id);
+    const posts = await Post.findAll({
+      where: { authorId: req.user.id },
+      order: [['createdAt', 'DESC']],
+    });
 
     res.json({
       success: true,
@@ -45,12 +116,23 @@ async function listMyPosts(req, res, next) {
 
 async function createPost(req, res, next) {
   try {
-    const newPost = await postModel.createPost({
-      ...req.body,
-      author: req.user,
+    const { type, ...postData } = req.body;
+    const newPost = await Post.create({
+      ...postData,
+      status: type === 'request' ? 'requesting' : 'lending',
+      authorId: req.user.id,
     });
 
-    res.status(201).json({ success: true, data: newPost });
+    // Para devolver el post con los datos del autor
+    const postWithAuthor = await Post.findByPk(newPost.id, {
+      include: {
+        model: User,
+        as: 'author',
+        attributes: ['id', 'name', 'avatar'],
+      },
+    });
+
+    res.status(201).json({ success: true, data: postWithAuthor });
   } catch (error) {
     next(error);
   }
@@ -58,13 +140,32 @@ async function createPost(req, res, next) {
 
 async function updatePost(req, res, next) {
   try {
-    const updatedPost = await postModel.updatePost(req.params.id, req.body, req.user);
+    const post = await Post.findByPk(req.params.id);
 
-    if (!updatedPost) {
-      return res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+    if (!post) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Publicación no encontrada.' });
     }
 
-    res.json({ success: true, data: updatedPost });
+    if (post.authorId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para editar esta publicación.',
+      });
+    }
+
+    const { type, ...changes } = req.body;
+    const status =
+      type === 'request'
+        ? 'requesting'
+        : type === 'lend'
+          ? 'lending'
+          : post.status;
+
+    await post.update({ ...changes, status });
+
+    res.json({ success: true, data: post });
   } catch (error) {
     next(error);
   }
@@ -72,22 +173,55 @@ async function updatePost(req, res, next) {
 
 async function deletePost(req, res, next) {
   try {
-    const confirmed = req.body?.confirmDelete === true || req.query?.confirmDelete === 'true';
+    const post = await Post.findByPk(req.params.id);
 
-    if (!confirmed) {
-      return res.status(400).json({
+    if (!post) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Publicación no encontrada.' });
+    }
+
+    if (post.authorId !== req.user.id) {
+      return res.status(403).json({
         success: false,
-        message: 'La confirmación de eliminación es obligatoria.',
+        message: 'No tienes permisos para eliminar esta publicación.',
       });
     }
 
-    const deleted = await postModel.deletePost(req.params.id, req.user);
+    await post.destroy();
+    res.json({
+      success: true,
+      message: 'Publicación eliminada correctamente.',
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
-    if (!deleted) {
-      return res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+async function toggleFavorite(req, res, next) {
+  try {
+    const postId = req.params.id;
+    const userId = req.user.id;
+
+    const favorite = await UserFavorite.findOne({ where: { userId, postId } });
+
+    if (favorite) {
+      // Si ya existe, lo eliminamos
+      await favorite.destroy();
+      res.json({
+        success: true,
+        message: 'Publicación eliminada de favoritos.',
+        data: { isFavorite: false },
+      });
+    } else {
+      // Si no existe, lo creamos
+      await UserFavorite.create({ userId, postId });
+      res.status(201).json({
+        success: true,
+        message: 'Publicación añadida a favoritos.',
+        data: { isFavorite: true },
+      });
     }
-
-    res.json({ success: true, message: 'Publicación eliminada correctamente.' });
   } catch (error) {
     next(error);
   }
@@ -100,4 +234,5 @@ module.exports = {
   createPost,
   updatePost,
   deletePost,
+  toggleFavorite,
 };
