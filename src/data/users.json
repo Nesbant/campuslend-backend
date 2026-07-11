@@ -1,0 +1,16 @@
+[
+  {
+    "id": "9617a6dc-804b-4a2c-be85-39f7dbb54b1c",
+    "name": "aaaa",
+    "email": "a@gmail.com",
+    "institution": "Pontificia Universidad Católica del Perú (PUCP)",
+    "studentId": ".2021",
+    "phone": "987654321",
+    "major": "Arquitectura",
+    "campus": "Campus San Miguel (Principal)",
+    "avatar": "",
+    "passwordHash": "scrypt$9e7b507ee82d760d8cd84e21d0531905$c6d30689ab4a85f07415440461361861ebbb89461f0f773eb69044ec9bded14393782eee607fe3c02151f9440204be16072ec3701235e3281e41b4396f0f9d4f",
+    "createdAt": "2026-07-11T05:55:24.557Z",
+    "updatedAt": "2026-07-11T05:55:24.557Z"
+  }
+]

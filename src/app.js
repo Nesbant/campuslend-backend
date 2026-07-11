@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const postsRoutes = require('./routes/posts.routes');
-const authMiddleware = require('./middleware/auth.middleware');
+const authRoutes = require('./routes/auth.routes');
 const errorHandler = require('./middleware/errorHandler.middleware');
 
 const app = express();
@@ -17,12 +17,12 @@ app.use((req, res, next) => {
 
   next();
 });
-app.use(authMiddleware);
 
 app.get('/health', (_req, res) => {
   res.json({ success: true, message: 'API funcionando correctamente.' });
 });
 
+app.use('/api/auth', authRoutes);
 app.use('/api/posts', postsRoutes);
 
 app.use(errorHandler);
