@@ -1,5 +1,14 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../sequelize");
+const { Sequelize, DataTypes } = require("sequelize");
+const {
+	databaseUrl,
+	normalizeDatabaseUrl,
+	runtimeOptions,
+} = require("../config/database");
+
+const sequelize = new Sequelize(
+	normalizeDatabaseUrl(databaseUrl()),
+	runtimeOptions(),
+);
 
 const User = sequelize.define(
 	"User",

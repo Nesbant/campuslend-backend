@@ -1,5 +1,5 @@
 const { Op, UniqueConstraintError } = require("sequelize");
-const { sequelize, Conversation, Message } = require("../db/models");
+const { sequelize, Conversation, Message } = require("../../models");
 const postModel = require("./post.model");
 const userModel = require("./user.model");
 
