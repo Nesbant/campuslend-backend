@@ -1,220 +1,279 @@
-const { Sequelize, DataTypes } = require("sequelize");
+'use strict';
+
+const Sequelize = require('sequelize');
 const {
-	databaseUrl,
-	normalizeDatabaseUrl,
-	runtimeOptions,
-} = require("../config/database");
+  databaseUrl,
+  normalizeDatabaseUrl,
+  runtimeOptions,
+} = require('../config/database');
 
 const sequelize = new Sequelize(
-	normalizeDatabaseUrl(databaseUrl()),
-	runtimeOptions(),
+  normalizeDatabaseUrl(databaseUrl()),
+  runtimeOptions(),
 );
 
+// --- MODELOS DE backprueba ---
+
 const User = sequelize.define(
-	"User",
-	{
-		id: {
-			type: DataTypes.UUID,
-			defaultValue: DataTypes.UUIDV4,
-			primaryKey: true,
-		},
-		name: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		email: {
-			type: DataTypes.STRING,
-			allowNull: false,
-			unique: true,
-		},
-		institution: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		studentId: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		phone: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		major: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		campus: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		avatar: {
-			type: DataTypes.TEXT,
-			allowNull: false,
-			defaultValue: "",
-		},
-		passwordHash: {
-			type: DataTypes.TEXT,
-			allowNull: false,
-		},
-	},
-	{
-		tableName: "users",
-		indexes: [
-			{
-				unique: true,
-				fields: ["institution", "studentId"],
-			},
-		],
-	},
+  'User',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+    name: { type: Sequelize.STRING, allowNull: false },
+    email: { type: Sequelize.STRING, allowNull: false, unique: true },
+    passwordHash: { type: Sequelize.TEXT, allowNull: false },
+    institution: { type: Sequelize.STRING, allowNull: false },
+    studentId: { type: Sequelize.STRING, allowNull: false },
+    phone: { type: Sequelize.STRING },
+    major: { type: Sequelize.STRING },
+    campus: { type: Sequelize.STRING },
+    avatar: { type: Sequelize.TEXT, defaultValue: '' },
+  },
+  {
+    tableName: 'Users',
+    indexes: [{ unique: true, fields: ['institution', 'studentId'] }],
+  },
 );
 
 const Post = sequelize.define(
-	"Post",
-	{
-		id: {
-			type: DataTypes.UUID,
-			defaultValue: DataTypes.UUIDV4,
-			primaryKey: true,
-		},
-		status: {
-			type: DataTypes.ENUM("lending", "requesting", "lent"),
-			allowNull: false,
-			defaultValue: "lending",
-		},
-		category: {
-			type: DataTypes.STRING,
-			allowNull: false,
-			defaultValue: "Otros",
-		},
-		title: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		description: {
-			type: DataTypes.TEXT,
-			allowNull: false,
-		},
-		imageUrl: {
-			type: DataTypes.TEXT,
-			allowNull: false,
-			defaultValue: "",
-		},
-		views: {
-			type: DataTypes.INTEGER,
-			allowNull: false,
-			defaultValue: 0,
-		},
-		isFavorite: {
-			type: DataTypes.BOOLEAN,
-			allowNull: false,
-			defaultValue: false,
-		},
-		timeAgo: {
-			type: DataTypes.STRING,
-			allowNull: false,
-			defaultValue: "hace un momento",
-		},
-		authorId: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		authorName: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		authorAvatar: {
-			type: DataTypes.TEXT,
-			allowNull: false,
-			defaultValue: "",
-		},
-		rating: {
-			type: DataTypes.FLOAT,
-			allowNull: false,
-			defaultValue: 5.0,
-		},
-		completedLoans: {
-			type: DataTypes.INTEGER,
-			allowNull: false,
-			defaultValue: 0,
-		},
-		loanDuration: {
-			type: DataTypes.STRING,
-			allowNull: false,
-			defaultValue: "A coordinar",
-		},
-		pickupLocation: {
-			type: DataTypes.STRING,
-			allowNull: false,
-			defaultValue: "A coordinar",
-		},
-	},
-	{
-		tableName: "posts",
-	},
+  'Post',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+    status: {
+      type: Sequelize.ENUM('lending', 'requesting', 'lent'),
+      allowNull: false,
+    },
+    category: { type: Sequelize.STRING },
+    title: { type: Sequelize.STRING, allowNull: false },
+    description: { type: Sequelize.TEXT },
+    imageUrl: { type: Sequelize.STRING },
+    loanDuration: { type: Sequelize.STRING },
+    pickupLocation: { type: Sequelize.STRING },
+    views: { type: Sequelize.INTEGER, defaultValue: 0 },
+  },
+  { tableName: 'Posts' },
 );
 
-const Conversation = sequelize.define(
-	"Conversation",
-	{
-		id: {
-			type: DataTypes.UUID,
-			defaultValue: DataTypes.UUIDV4,
-			primaryKey: true,
-		},
-		postId: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		ownerId: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		participantId: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-	},
-	{
-		tableName: "conversations",
-		indexes: [
-			{
-				unique: true,
-				fields: ["postId", "ownerId", "participantId"],
-			},
-		],
-	},
+const Chat = sequelize.define(
+  'Chat',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+    reference: { type: Sequelize.STRING, allowNull: true },
+    lastMessageAt: { type: Sequelize.DATE },
+  },
+  { tableName: 'Chats' },
 );
 
 const Message = sequelize.define(
-	"Message",
-	{
-		id: {
-			type: DataTypes.UUID,
-			defaultValue: DataTypes.UUIDV4,
-			primaryKey: true,
-		},
-		conversationId: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		senderId: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		text: {
-			type: DataTypes.STRING(500),
-			allowNull: false,
-		},
-	},
-	{
-		tableName: "messages",
-	},
+  'Message',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+    content: { type: Sequelize.TEXT, allowNull: false },
+    isRead: { type: Sequelize.BOOLEAN, defaultValue: false },
+  },
+  { tableName: 'Messages' },
 );
 
+const ChatParticipant = sequelize.define(
+  'ChatParticipant',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+  },
+  { tableName: 'ChatParticipants' },
+);
+
+// --- MODELOS ADICIONALES QUE YA TENÍAMOS ---
+
+const Institution = sequelize.define(
+  'Institution',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+    name: { type: Sequelize.STRING, allowNull: false, unique: true },
+  },
+  { tableName: 'Institutions' },
+);
+
+const Campus = sequelize.define(
+  'Campus',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+    name: { type: Sequelize.STRING, allowNull: false },
+  },
+  { tableName: 'Campuses' },
+);
+
+const Major = sequelize.define(
+  'Major',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+    name: { type: Sequelize.STRING, allowNull: false },
+  },
+  { tableName: 'Majors' },
+);
+
+const Loan = sequelize.define(
+  'Loan',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+    requestDate: { type: Sequelize.DATE },
+    approvalDate: { type: Sequelize.DATE },
+    startDate: { type: Sequelize.DATE },
+    endDate: { type: Sequelize.DATE },
+    returnDate: { type: Sequelize.DATE },
+    status: {
+      type: Sequelize.ENUM(
+        'pending',
+        'approved',
+        'rejected',
+        'active',
+        'returned',
+        'overdue',
+      ),
+      defaultValue: 'pending',
+    },
+    notes: { type: Sequelize.TEXT },
+  },
+  { tableName: 'Loans' },
+);
+
+const Review = sequelize.define(
+  'Review',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+    rating: {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+      validate: { min: 1, max: 5 },
+    },
+    comment: { type: Sequelize.TEXT },
+  },
+  { tableName: 'Reviews' },
+);
+
+const UserFavorite = sequelize.define(
+  'UserFavorite',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+  },
+  { tableName: 'UserFavorites' },
+);
+
+// --- DEFINICIÓN DE ASOCIACIONES ---
+
+// User
+User.hasMany(Post, { foreignKey: 'authorId', as: 'posts' });
+User.belongsToMany(Chat, {
+  through: ChatParticipant,
+  foreignKey: 'userId',
+  as: 'chats',
+});
+User.hasMany(Message, { as: 'sentMessages', foreignKey: 'senderId' });
+User.hasMany(Loan, { as: 'loansGiven', foreignKey: 'lenderId' });
+User.hasMany(Loan, { as: 'loansTaken', foreignKey: 'borrowerId' });
+User.belongsToMany(Post, {
+  through: UserFavorite,
+  foreignKey: 'userId',
+  as: 'favoritePosts',
+});
+User.hasMany(Review, { as: 'reviewsWritten', foreignKey: 'reviewerId' });
+User.hasMany(Review, { as: 'reviewsReceived', foreignKey: 'revieweeId' });
+
+// Post
+Post.belongsTo(User, { foreignKey: 'authorId', as: 'author' });
+Post.hasMany(Loan, { foreignKey: 'postId' });
+Post.belongsToMany(User, {
+  through: UserFavorite,
+  foreignKey: 'postId',
+  as: 'favoritedBy',
+});
+
+// Chat
+Chat.hasMany(Message, { foreignKey: 'chatId', as: 'messages' });
+Chat.belongsToMany(User, {
+  through: ChatParticipant,
+  foreignKey: 'chatId',
+  as: 'participants',
+});
+
+// Message
+Message.belongsTo(Chat, { foreignKey: 'chatId' });
+Message.belongsTo(User, { as: 'sender', foreignKey: 'senderId' });
+
+// Loan
+Loan.belongsTo(Post, { foreignKey: 'postId' });
+Loan.belongsTo(User, { as: 'lender', foreignKey: 'lenderId' });
+Loan.belongsTo(User, { as: 'borrower', foreignKey: 'borrowerId' });
+Loan.hasMany(Review, { foreignKey: 'loanId' });
+
+// Review
+Review.belongsTo(Loan, { foreignKey: 'loanId' });
+Review.belongsTo(User, { as: 'reviewer', foreignKey: 'reviewerId' });
+Review.belongsTo(User, { as: 'reviewee', foreignKey: 'revieweeId' });
+
+// Institution / Campus / Major
+Institution.hasMany(Campus, { foreignKey: 'institutionId', as: 'campuses' });
+Campus.belongsTo(Institution, {
+  foreignKey: 'institutionId',
+  as: 'institution',
+});
+Campus.hasMany(Major, { foreignKey: 'campusId', as: 'majors' });
+Major.belongsTo(Campus, { foreignKey: 'campusId', as: 'campus' });
+
 module.exports = {
-	sequelize,
-	User,
-	Post,
-	Conversation,
-	Message,
+  sequelize,
+  Sequelize,
+  User,
+  Post,
+  Chat,
+  Message,
+  ChatParticipant,
+  Institution,
+  Campus,
+  Major,
+  Loan,
+  Review,
+  UserFavorite,
 };

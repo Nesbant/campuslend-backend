@@ -1,63 +1,44 @@
-require("dotenv").config({ quiet: true });
-
-const FALLBACK_DATABASE_URL =
-	"postgres://missing:missing@localhost:5432/missing";
-
-function normalizeDatabaseUrl(value) {
-	try {
-		const url = new URL(value);
-		url.searchParams.delete("sslmode");
-		return url.toString();
-	} catch {
-		return value;
-	}
-}
+require('dotenv').config();
 
 function databaseUrl() {
-	return process.env.DATABASE_URL || FALLBACK_DATABASE_URL;
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error('DATABASE_URL environment variable is not set.');
+  }
+  return url;
 }
 
-function logging() {
-	return process.env.SEQUELIZE_LOGGING === "true" ? console.log : false;
-}
-
-function dialectOptions() {
-	return {
-		ssl: {
-			require: true,
-			rejectUnauthorized: false,
-		},
-	};
+function normalizeDatabaseUrl(url) {
+  return url.split('?')[0];
 }
 
 function runtimeOptions() {
-	return {
-		dialect: "postgres",
-		logging: logging(),
-		dialectOptions: dialectOptions(),
-	};
+  const isProduction = process.env.NODE_ENV === 'production';
+  const logging = process.env.SEQUELIZE_LOGGING === 'true';
+
+  const options = {
+    logging: logging ? console.log : false,
+    dialect: 'postgres',
+  };
+
+   options.dialectOptions = {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  };
+
+  return options;
 }
 
-function cliEnvironmentConfig() {
-	return {
-		use_env_variable: "DATABASE_URL",
-		dialect: "postgres",
-		logging: logging(),
-		dialectOptions: dialectOptions(),
-	};
-}
-
-function cliConfig() {
-	return {
-		development: cliEnvironmentConfig(),
-		test: cliEnvironmentConfig(),
-		production: cliEnvironmentConfig(),
-	};
-}
+const cliConfig = () => ({
+  url: normalizeDatabaseUrl(databaseUrl()),
+  ...runtimeOptions(),
+});
 
 module.exports = {
-	databaseUrl,
-	normalizeDatabaseUrl,
-	runtimeOptions,
-	cliConfig,
+  databaseUrl,
+  normalizeDatabaseUrl,
+  runtimeOptions,
+  cliConfig,
 };

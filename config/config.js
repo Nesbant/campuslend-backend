@@ -1,3 +1,9 @@
-const { cliConfig } = require("./database");
+const { cliConfig } = require('./database');
 
-module.exports = cliConfig();
+// Sequelize-CLI usará esta configuración para las migraciones.
+// El formato es diferente para desarrollo y producción.
+module.exports = {
+  development: cliConfig(),
+  production: cliConfig(),
+  test: cliConfig(),
+};
