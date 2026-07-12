@@ -9,11 +9,14 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'chatId',
         as: 'participants',
       });
+      Chat.belongsTo(models.Post, { foreignKey: 'postId', as: 'post' });
     }
   }
   Chat.init(
     {
       lastMessageAt: DataTypes.DATE,
+      reference: DataTypes.STRING,
+      postId: DataTypes.UUID,
     },
     {
       sequelize,

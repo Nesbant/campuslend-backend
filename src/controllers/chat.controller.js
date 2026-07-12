@@ -124,6 +124,11 @@ async function listMyChats(req, res, next) {
           limit: 1,
           order: [['createdAt', 'DESC']],
         },
+        {
+          model: Post,
+          as: 'post',
+          attributes: ['id', 'title', 'authorId'],
+        },
       ],
       order: [['lastMessageAt', 'DESC']],
     });
@@ -153,6 +158,11 @@ async function getChatById(req, res, next) {
             },
           ],
           order: [['createdAt', 'ASC']],
+        },
+        {
+          model: Post,
+          as: 'post',
+          attributes: ['id', 'title', 'authorId'],
         },
       ],
     });
@@ -251,6 +261,11 @@ async function getChatDetails(chatId) {
         limit: 1,
         order: [['createdAt', 'DESC']],
         include: [{ model: User, as: 'sender', attributes: ['id', 'name'] }],
+      },
+      {
+        model: Post,
+        as: 'post',
+        attributes: ['id', 'title', 'authorId'],
       },
     ],
   });
