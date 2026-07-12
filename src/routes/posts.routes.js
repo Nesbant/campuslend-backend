@@ -4,8 +4,8 @@ const postsController = require('../controllers/posts.controller');
 const {
   validatePost,
   validateId,
-} = require('../middlewares/validatePost.middleware');
-const { authGuard, authOptional } = require('../middlewares/auth.middleware');
+} = require('../middleware/validatePost.middleware');
+const { authGuard, authOptional } = require('../middleware/auth.middleware');
 
 router.get('/', authOptional, postsController.listPosts);
 router.get('/me', authGuard, postsController.listMyPosts);

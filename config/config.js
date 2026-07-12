@@ -1,22 +1,9 @@
-require('dotenv').config();
+const { cliConfig } = require('./database');
 
+// Sequelize-CLI usará esta configuración para las migraciones.
+// El formato es diferente para desarrollo y producción.
 module.exports = {
-  development: {
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    host: process.env.DB_HOST,
-    dialect: process.env.DB_DIALECT,
-  },
-  test: {
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    host: process.env.DB_HOST,
-    dialect: process.env.DB_DIALECT,
-  },
-  production: {
-    use_env_variable: 'DATABASE_URL',
-    dialect: 'postgres',
-  },
+  development: cliConfig(),
+  production: cliConfig(),
+  test: cliConfig(),
 };

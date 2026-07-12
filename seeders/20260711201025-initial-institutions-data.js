@@ -1,4 +1,5 @@
 'use strict';
+const { v4: uuidv4 } = require('uuid');
 
 const INSTITUTIONS_DATA = {
   'Pontificia Universidad Católica del Perú (PUCP)': {
@@ -432,32 +433,59 @@ const INSTITUTIONS_DATA = {
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    for (const institutionName of Object.keys(INSTITUTIONS_DATA)) {
-      const [institution] = await queryInterface.bulkInsert('Institutions', [{
-        name: institutionName,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }], { returning: ['id'] });
+    const transaction = await queryInterface.sequelize.transaction();
+    try {
+      for (const institutionName of Object.keys(INSTITUTIONS_DATA)) {
+        const institutionId = uuidv4();
+        await queryInterface.bulkInsert(
+          'Institutions',
+          [
+            {
+              id: institutionId,
+              name: institutionName,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ],
+          { transaction },
+        );
 
-      const campuses = INSTITUTIONS_DATA[institutionName];
-      for (const campusName of Object.keys(campuses)) {
-        const [campus] = await queryInterface.bulkInsert('Campuses', [{
-          name: campusName,
-          institutionId: institution.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }], { returning: ['id'] });
+        const campuses = INSTITUTIONS_DATA[institutionName];
+        for (const campusName of Object.keys(campuses)) {
+          const campusId = uuidv4();
+          await queryInterface.bulkInsert(
+            'Campuses',
+            [
+              {
+                id: campusId,
+                name: campusName,
+                institutionId: institutionId,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+            { transaction },
+          );
 
-        const majors = campuses[campusName].map(majorName => ({
-          name: majorName,
-          campusId: campus.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }));
-        if (majors.length > 0) {
-          await queryInterface.bulkInsert('Majors', majors, {});
+          const majorsData = campuses[campusName];
+          if (majorsData.length > 0) {
+            const majorsToInsert = majorsData.map((majorName) => ({
+              id: uuidv4(),
+              name: majorName,
+              campusId: campusId,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }));
+            await queryInterface.bulkInsert('Majors', majorsToInsert, {
+              transaction,
+            });
+          }
         }
       }
+      await transaction.commit();
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
     }
   },
 

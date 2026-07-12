@@ -1,4 +1,4 @@
-const { Institution, Campus, Major } = require('../../models');
+const { Institution, Campus, Major } = require('../../models'); // Esta ruta sigue siendo correcta
 
 async function getInstitutionsData(req, res, next) {
   try {

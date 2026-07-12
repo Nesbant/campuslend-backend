@@ -1,4 +1,4 @@
-const { Post, User, UserFavorite, Sequelize } = require('../../models');
+const { Post, User, UserFavorite, Sequelize } = require('../../models'); // Esta ruta sigue siendo correcta
 const { Op } = Sequelize;
 
 async function listPosts(req, res, next) {
@@ -40,8 +40,6 @@ async function listPosts(req, res, next) {
       order: [['createdAt', 'DESC']],
     });
 
-    await post.increment('views');
-
     res.json({
       success: true,
       data: posts.map((post) => {
@@ -79,12 +77,14 @@ async function getPost(req, res, next) {
       include,
     });
 
-    await post.increment('views');
-
     if (!post) {
       return res
         .status(404)
         .json({ success: false, message: 'Publicación no encontrada.' });
+    }
+
+    if (!req.user || req.user.id !== post.authorId) {
+      await post.increment('views');
     }
 
     const isFavorite = post.favoritedBy && post.favoritedBy.length > 0;
@@ -101,6 +101,11 @@ async function listMyPosts(req, res, next) {
   try {
     const posts = await Post.findAll({
       where: { authorId: req.user.id },
+      include: {
+        model: User,
+        as: 'author',
+        attributes: ['id', 'name', 'avatar'],
+      },
       order: [['createdAt', 'DESC']],
     });
 

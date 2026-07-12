@@ -1,33 +1,39 @@
 const tokenService = require('../services/token.service');
+const { User } = require('../../models');
 
-function authenticate(req, _res, next) {
+const getAuthToken = (req) => {
+  const header = req.headers.authorization;
+  if (header && header.startsWith('Bearer ')) {
+    return header.substring(7);
+  }
+  return null;
+};
+
+const authGuard = async (req, res, next) => {
+  const token = getAuthToken(req);
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Token no proporcionado.' });
+  }
+
   try {
-    const authorization = req.headers.authorization || '';
-    const [scheme, token] = authorization.split(' ');
-
-    if (scheme !== 'Bearer' || !token) {
-      const error = new Error('Debes iniciar sesión para realizar esta acción.');
-      error.statusCode = 401;
-      error.code = 'AUTH_REQUIRED';
-      throw error;
+    const decoded = tokenService.verifyAccessToken(token);
+    const user = await User.findByPk(decoded.sub);
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Usuario no encontrado.' });
     }
-
-    const payload = tokenService.verifyAccessToken(token);
-    req.user = {
-      id: payload.sub,
-      email: payload.email,
-      name: payload.name,
-      avatar: payload.avatar || '',
-    };
+    req.user = user;
     next();
   } catch (error) {
-    if (!error.statusCode) {
-      error.statusCode = 401;
-      error.code = 'INVALID_TOKEN';
-      error.message = 'La sesión no es válida o ha expirado.';
-    }
-    next(error);
+    return res.status(401).json({ success: false, message: 'Token inválido o expirado.' });
   }
-}
+};
 
-module.exports = authenticate;
+const authOptional = async (req, res, next) => {
+  const token = getAuthToken(req);
+  if (token) {
+    return authGuard(req, res, next); // Si hay token, lo validamos
+  }
+  next(); // Si no hay token, simplemente continuamos
+};
+
+module.exports = { authGuard, authOptional };
