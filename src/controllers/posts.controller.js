@@ -1,4 +1,12 @@
-const { Post, User, UserFavorite, Sequelize } = require('../../models'); // Esta ruta sigue siendo correcta
+const {
+  Post,
+  User,
+  UserFavorite,
+  Loan,
+  Notification,
+  sequelize,
+  Sequelize,
+} = require('../../models');
 const { Op } = Sequelize;
 
 async function listPosts(req, res, next) {
@@ -119,6 +127,129 @@ async function listMyPosts(req, res, next) {
   }
 }
 
+async function listFavorites(req, res, next) {
+  try {
+    const posts = await Post.findAll({
+      include: [
+        {
+          model: User,
+          as: 'author',
+          attributes: ['id', 'name', 'avatar'],
+        },
+        {
+          model: User,
+          as: 'favoritedBy',
+          where: { id: req.user.id },
+          attributes: [],
+          through: { attributes: [] },
+        },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    res.json({
+      success: true,
+      count: posts.length,
+      data: posts.map((post) => ({ ...post.toJSON(), isFavorite: true })),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function listMyRequests(req, res, next) {
+  try {
+    const loans = await Loan.findAll({
+      where: {
+        [Op.or]: [
+          { lenderId: req.user.id },
+          { borrowerId: req.user.id },
+        ],
+      },
+      include: {
+        model: Post,
+        required: true,
+        where: { authorId: { [Op.ne]: req.user.id } },
+        include: {
+          model: User,
+          as: 'author',
+          attributes: ['id', 'name', 'avatar'],
+        },
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    res.json({
+      success: true,
+      count: loans.length,
+      data: loans.map((loan) => ({
+        ...loan.Post.toJSON(),
+        loanId: loan.id,
+        loanStatus: loan.status,
+        requestDate: loan.requestDate,
+        approvalDate: loan.approvalDate,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function requestLoan(req, res, next) {
+  const transaction = await sequelize.transaction();
+  try {
+    const post = await Post.findByPk(req.params.id, { transaction, lock: true });
+    if (!post) {
+      await transaction.rollback();
+      return res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+    }
+    if (post.authorId === req.user.id) {
+      await transaction.rollback();
+      return res.status(400).json({ success: false, message: 'No puedes solicitar tu propia publicación.' });
+    }
+    if (post.status === 'lent') {
+      await transaction.rollback();
+      return res.status(409).json({ success: false, message: 'La publicación ya no está disponible.' });
+    }
+
+    const lenderId = post.status === 'lending' ? post.authorId : req.user.id;
+    const borrowerId = post.status === 'lending' ? req.user.id : post.authorId;
+    const existing = await Loan.findOne({
+      where: { postId: post.id, lenderId, borrowerId, status: 'pending' },
+      transaction,
+    });
+    if (existing) {
+      await transaction.rollback();
+      return res.status(409).json({ success: false, message: 'Ya existe una solicitud pendiente para esta publicación.' });
+    }
+
+    const loan = await Loan.create({
+      postId: post.id,
+      lenderId,
+      borrowerId,
+      requestDate: new Date(),
+      status: 'pending',
+      notes: req.body.notes || null,
+    }, { transaction });
+
+    const action = post.status === 'lending' ? 'ha solicitado tu publicación' : 'ha ofrecido ayudarte con';
+    await Notification.create({
+      type: 'loan_request',
+      message: `${req.user.name} ${action} “${post.title}”.`,
+      userId: post.authorId,
+      actorId: req.user.id,
+      postId: post.id,
+      loanId: loan.id,
+    }, { transaction });
+
+    await transaction.commit();
+    res.status(201).json({ success: true, data: loan });
+  } catch (error) {
+    await transaction.rollback();
+    next(error);
+  }
+}
+
 async function createPost(req, res, next) {
   try {
     const { type, ...postData } = req.body;
@@ -208,6 +339,20 @@ async function toggleFavorite(req, res, next) {
     const postId = req.params.id;
     const userId = req.user.id;
 
+    const post = await Post.findByPk(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Publicación no encontrada.',
+      });
+    }
+    if (post.authorId === userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'No puedes guardar tu propia publicación como favorita.',
+      });
+    }
+
     const favorite = await UserFavorite.findOne({ where: { userId, postId } });
 
     if (favorite) {
@@ -236,6 +381,9 @@ module.exports = {
   listPosts,
   getPost,
   listMyPosts,
+  listFavorites,
+  listMyRequests,
+  requestLoan,
   createPost,
   updatePost,
   deletePost,

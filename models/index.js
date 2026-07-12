@@ -70,6 +70,7 @@ const Chat = sequelize.define(
       primaryKey: true,
     },
     reference: { type: Sequelize.STRING, allowNull: true },
+    postId: { type: Sequelize.UUID, allowNull: true },
     lastMessageAt: { type: Sequelize.DATE },
   },
   { tableName: 'Chats' },
@@ -201,6 +202,21 @@ const UserFavorite = sequelize.define(
   { tableName: 'UserFavorites' },
 );
 
+const Notification = sequelize.define(
+  'Notification',
+  {
+    id: {
+      type: Sequelize.UUID,
+      defaultValue: Sequelize.UUIDV4,
+      primaryKey: true,
+    },
+    type: { type: Sequelize.STRING, allowNull: false },
+    message: { type: Sequelize.TEXT, allowNull: false },
+    isRead: { type: Sequelize.BOOLEAN, defaultValue: false },
+  },
+  { tableName: 'Notifications' },
+);
+
 // --- DEFINICIÓN DE ASOCIACIONES ---
 
 // User
@@ -220,10 +236,12 @@ User.belongsToMany(Post, {
 });
 User.hasMany(Review, { as: 'reviewsWritten', foreignKey: 'reviewerId' });
 User.hasMany(Review, { as: 'reviewsReceived', foreignKey: 'revieweeId' });
+User.hasMany(Notification, { as: 'notifications', foreignKey: 'userId' });
 
 // Post
 Post.belongsTo(User, { foreignKey: 'authorId', as: 'author' });
 Post.hasMany(Loan, { foreignKey: 'postId' });
+Post.hasMany(Chat, { foreignKey: 'postId', as: 'chats' });
 Post.belongsToMany(User, {
   through: UserFavorite,
   foreignKey: 'postId',
@@ -232,6 +250,7 @@ Post.belongsToMany(User, {
 
 // Chat
 Chat.hasMany(Message, { foreignKey: 'chatId', as: 'messages' });
+Chat.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
 Chat.belongsToMany(User, {
   through: ChatParticipant,
   foreignKey: 'chatId',
@@ -252,6 +271,11 @@ Loan.hasMany(Review, { foreignKey: 'loanId' });
 Review.belongsTo(Loan, { foreignKey: 'loanId' });
 Review.belongsTo(User, { as: 'reviewer', foreignKey: 'reviewerId' });
 Review.belongsTo(User, { as: 'reviewee', foreignKey: 'revieweeId' });
+
+Notification.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+Notification.belongsTo(User, { as: 'actor', foreignKey: 'actorId' });
+Notification.belongsTo(Post, { as: 'post', foreignKey: 'postId' });
+Notification.belongsTo(Loan, { as: 'loan', foreignKey: 'loanId' });
 
 // Institution / Campus / Major
 Institution.hasMany(Campus, { foreignKey: 'institutionId', as: 'campuses' });
@@ -276,4 +300,5 @@ module.exports = {
   Loan,
   Review,
   UserFavorite,
+  Notification,
 };

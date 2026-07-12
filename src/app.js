@@ -4,6 +4,7 @@ const postsRoutes = require('./routes/posts.routes');
 const authRoutes = require('./routes/auth.routes');
 const institutionsRoutes = require('./routes/institutions.routes');
 const chatRoutes = require('./routes/chat.routes');
+const notificationsRoutes = require('./routes/notifications.routes');
 const errorHandler = require('./middleware/errorHandler.middleware');
 
 const app = express();
@@ -30,6 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/posts', postsRoutes);
 app.use('/api/institutions', institutionsRoutes);
 app.use('/api/chats', chatRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 app.use(errorHandler);
 

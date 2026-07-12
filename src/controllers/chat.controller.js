@@ -3,6 +3,7 @@ const {
   User,
   Message,
   ChatParticipant,
+  Post,
   sequelize,
 } = require('../../models');
 const { Op } = require('sequelize');
@@ -11,8 +12,15 @@ const { Op } = require('sequelize');
  * Inicia o encuentra una conversación entre el usuario actual y otro usuario.
  */
 async function findOrCreateChat(req, res, next) {
-  const { recipientId, reference } = req.body;
+  const { recipientId, reference, postId } = req.body;
   const senderId = req.user.id;
+
+  if (typeof recipientId !== 'string' || !recipientId.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'El destinatario es obligatorio.',
+    });
+  }
 
   if (senderId === recipientId) {
     return res.status(400).json({
@@ -22,8 +30,26 @@ async function findOrCreateChat(req, res, next) {
   }
 
   try {
-    // Busca un chat que ya tenga a estos dos participantes.
-    const [chatMatch] = await ChatParticipant.findAll({
+    const recipient = await User.findByPk(recipientId);
+    if (!recipient) {
+      return res.status(404).json({
+        success: false,
+        message: 'El usuario destinatario no existe.',
+      });
+    }
+    if (postId) {
+      const post = await Post.findByPk(postId);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'La publicación asociada no existe.',
+        });
+      }
+    }
+
+    // Busca chats compartidos por ambos usuarios y reutiliza solamente el de
+    // la misma publicación. Así cada artículo conserva su propio contexto.
+    const chatMatches = await ChatParticipant.findAll({
       attributes: ['chatId'],
       where: {
         userId: {
@@ -35,22 +61,31 @@ async function findOrCreateChat(req, res, next) {
       raw: true,
     });
 
-    if (chatMatch) {
+    const sharedChatIds = chatMatches.map((match) => match.chatId);
+    const existingChat = sharedChatIds.length
+      ? await Chat.findOne({
+          where: {
+            id: { [Op.in]: sharedChatIds },
+            ...(postId ? { postId } : { postId: null, reference: reference || null }),
+          },
+        })
+      : null;
+
+    if (existingChat) {
       // Si el chat ya existe, lo devolvemos.
-      const existingChat = await getChatDetails(chatMatch.chatId);
-      if (reference && !existingChat.reference) {
+      if (reference && existingChat.reference !== reference) {
         await existingChat.update({ reference });
       }
       return res.json({
         success: true,
-        data: await getChatDetails(chatMatch.chatId),
+        data: await getChatDetails(existingChat.id),
       });
     }
 
     // Si no existe, creamos uno nuevo en una transacción.
     const newChat = await sequelize.transaction(async (t) => {
       const createdChat = await Chat.create(
-        { reference: reference || null },
+        { reference: reference || null, postId: postId || null },
         { transaction: t },
       );
       await ChatParticipant.bulkCreate(
@@ -90,9 +125,6 @@ async function listMyChats(req, res, next) {
           order: [['createdAt', 'DESC']],
         },
       ],
-      where: {
-        '$participants.id$': { [Op.not]: null }, // Asegurarse de que el chat tenga otros participantes
-      },
       order: [['lastMessageAt', 'DESC']],
     });
     res.json({ success: true, data: chats });
@@ -147,6 +179,20 @@ async function getChatById(req, res, next) {
 
 async function sendMessage(req, res, next) {
   try {
+    const content =
+      typeof req.body.content === 'string' ? req.body.content.trim() : '';
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        message: 'El mensaje no puede estar vacío.',
+      });
+    }
+    if (content.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'El mensaje no puede superar los 500 caracteres.',
+      });
+    }
     const chat = await Chat.findByPk(req.params.id, {
       include: [
         {
@@ -174,7 +220,7 @@ async function sendMessage(req, res, next) {
     const message = await Message.create({
       chatId: chat.id,
       senderId: req.user.id,
-      content: req.body.content,
+      content,
       isRead: false,
     });
 

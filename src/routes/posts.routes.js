@@ -9,6 +9,8 @@ const { authGuard, authOptional } = require('../middleware/auth.middleware');
 
 router.get('/', authOptional, postsController.listPosts);
 router.get('/me', authGuard, postsController.listMyPosts);
+router.get('/favorites', authGuard, postsController.listFavorites);
+router.get('/requests', authGuard, postsController.listMyRequests);
 router.get('/:id', authOptional, validateId, postsController.getPost);
 router.post('/', authGuard, validatePost, postsController.createPost);
 router.post(
@@ -17,6 +19,7 @@ router.post(
   validateId,
   postsController.toggleFavorite,
 );
+router.post('/:id/loan-requests', authGuard, validateId, postsController.requestLoan);
 router.put(
   '/:id',
   authGuard,
